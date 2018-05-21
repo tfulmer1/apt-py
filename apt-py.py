@@ -1,21 +1,23 @@
-import os
 import sys
+import subprocess
+import os
+from apt import tools
 
 
 def parse_arguments(arguments):
     parsed_command = {
-        'set_update': False,
-        'get_update': False,
-        'install_update': False,
-        'set_upgrade': False,
-        'get_upgrade': False,
-        'install_upgrade': False,
-        'set_dist-upgrade': False,
-        'get_dist-upgrade': False,
-        'install_dist-upgrade': False,
-        'set_install': False,
-        'get_install': False,
-        'install_install': False
+        'set_update': [False, tools.set_update],
+        'get_update': [False, tools.get_update],
+        'install_update': [False, tools.install_update],
+        'set_upgrade': [False, tools.set_upgrade],
+        'get_upgrade': [False, tools.get_upgrade],
+        'install_upgrade': [False, tools.install_upgrade],
+        'set_dist-upgrade': [False, tools.set_dist_upgrade],
+        'get_dist-upgrade': [False, tools.get_dist_upgrade],
+        'install_dist-upgrade': [False, tools.install_dist_upgrade],
+        'set_install': [False, tools.set_install],
+        'get_install': [False, tools.get_install],
+        'install_install': [False, tools.install_install]
     }
 
     if '--help' in arguments or '-h' in arguments:
@@ -25,7 +27,7 @@ def parse_arguments(arguments):
     if arguments[0] not in parsed_command:
         raise ValueError("You have entered an invalid command, please use --help for correct syntax")
 
-    parsed_command[arguments[0]] = True
+    parsed_command[arguments[0]][0] = True
 
     if arguments[0] in ['set_install', 'get_install', 'install_install']:
         if not arguments[1:]:
@@ -43,9 +45,9 @@ def parse_arguments(arguments):
 
 def display_help_menu():
     menu = """
-    usage: python3 apt-py [command] [space separated package list if needed]
+    Usage: python3 apt-py [command] [space separated package list if needed]
     
-    Command options:
+    Command Options:
         set_update: Generates an update signature on your offline system
         get_update: Downloads the package list from the repo on the online system
         install_update: Installs the package list on the offline system to update apt
@@ -70,8 +72,35 @@ def display_help_menu():
     print(menu)
 
 
+def clear_cache():
+    downloads_dir = os.path.join(os.getcwd(), 'downloads')
+    signatures_dir = os.path.join(os.getcwd(), 'signatures')
+
+    sigs = [os.path.join(signatures_dir, x) for x in os.listdir(signatures_dir)]
+    downloads = [os.path.join(downloads_dir, x) for x in os.listdir(downloads_dir)]
+
+    files_list = sigs + downloads
+
+    for file_path in files_list:
+        subprocess.run(['rm', file_path])
+
+
 def main(command):
-    pass
+
+    download_dir = os.path.join(os.getcwd(), 'downloads')
+    sig_dir = os.path.join(os.getcwd(), 'sigantures')
+
+    if not os.path.exists(download_dir):
+        os.makedirs(download_dir)
+    if not os.path.exists(sig_dir):
+        os.makedirs(sig_dir)
+
+    if command['set_update'][0] or command['set_upgrade'][0] or command['set_dist-upgrade'][0] or command['set_install'][0]:
+        clear_cache()  # If we're doing a set command, we're starting a new operation
+
+    for option in command:
+        if command[option][0]:
+            command[option][1]()
 
 
 if __name__ == '__main__':
